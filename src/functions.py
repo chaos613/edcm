@@ -39,12 +39,51 @@ def content_kind(item):
         return "video"
     return "other"
 
+def split_patterns(value):
+    return [pattern.strip() for pattern in str(value).split("|") if pattern.strip()]
+
+
+def _matches_any(values, patterns):
+    return any(
+        fnmatch.fnmatch(str(value).casefold(), pattern.casefold())
+        for pattern in patterns
+        for value in values
+        if value not in (None, "")
+    )
+
+
 def determine_match(item, rule_set, rules):
+    compound_rules = {
+        "nameany": ("name", "any"),
+        "nameall": ("name", "all"),
+        "excludename": ("name", "exclude"),
+        "genresany": ("genres", "any"),
+        "genresall": ("genres", "all"),
+        "excludegenres": ("genres", "exclude"),
+    }
     for key, pattern in rules.items():
+        compound = compound_rules.get(key)
+        if compound:
+            field, mode = compound
+            values = item.get(field, [])
+            if not isinstance(values, list):
+                values = [values]
+            patterns = split_patterns(pattern)
+            if not patterns:
+                return False
+            if mode == "any" and not _matches_any(values, patterns):
+                return False
+            if mode == "all" and not all(_matches_any(values, [value]) for value in patterns):
+                return False
+            if mode == "exclude" and _matches_any(values, patterns):
+                return False
+            continue
         values = item.get(key, [])
-        if not isinstance(values, list): values = [values]
+        if not isinstance(values, list):
+            values = [values]
         flat = []
-        for value in values: flat.extend(value if isinstance(value, list) else [value])
+        for value in values:
+            flat.extend(value if isinstance(value, list) else [value])
         if not any(fnmatch.fnmatch(str(value).casefold(), pattern.casefold()) for value in flat if value not in (None, "")):
             return False
     return True

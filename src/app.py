@@ -9,11 +9,13 @@ from planner import plan_query
 from variables import DEBUG, EMBY_ADDRESS, EMBY_TOKEN, SCAN_INTERVAL, emby_api
 from watcher import register_config_watcher
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 FIELD_MAP = {
     "datecreated": "DateCreated", "overview": "Overview", "parentid": "ParentId",
-    "genres": "Genres", "people": "People", "studios": "Studios", "path": "Path",
+    "genres": "Genres", "genresany": "Genres", "genresall": "Genres",
+    "excludegenres": "Genres", "people": "People", "studios": "Studios",
+    "path": "Path",
 }
 
 
@@ -74,20 +76,31 @@ def main(config):
             display_name = library.get("Name", "unknown library")
             try:
                 saw_page = False
-                for page, retrieved, total in emby_api.iter_library_content(
-                    library["Id"], params=plan.params, fields=fields_for_rules(rules["filters"])
-                ):
-                    saw_page = True
-                    for raw_item in page:
-                        item = map_content_data(raw_item)
-                        if not determine_match(item, rule_set, rules["filters"]):
-                            continue
-                        kind = content_kind(raw_item)
-                        if not included_kinds.get(kind, False):
-                            excluded[kind] += 1
-                            continue
-                        matching_ids.add(item["id"])
-                    logger.info("Scanning {}: {} / {}", display_name, retrieved, total)
+                seen_candidates = set()
+                for query_number, query in enumerate(plan.queries, 1):
+                    for page, retrieved, total in emby_api.iter_library_content(
+                        library["Id"], params=query,
+                        fields=fields_for_rules(rules["filters"]),
+                    ):
+                        saw_page = True
+                        for raw_item in page:
+                            item_id = raw_item.get("Id")
+                            if item_id in seen_candidates:
+                                continue
+                            seen_candidates.add(item_id)
+                            item = map_content_data(raw_item)
+                            if not determine_match(item, rule_set, rules["filters"]):
+                                continue
+                            kind = content_kind(raw_item)
+                            if not included_kinds.get(kind, False):
+                                excluded[kind] += 1
+                                continue
+                            matching_ids.add(item["id"])
+                        logger.info(
+                            "Scanning {} query {}/{}: {} / {}",
+                            display_name, query_number, len(plan.queries),
+                            retrieved, total,
+                        )
                 if not saw_page:
                     logger.info("Scanning {}: 0 / 0", display_name)
             except EmbyAPIError as exc:

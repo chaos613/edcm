@@ -23,3 +23,17 @@
 ; IncludeItemTypes = Series
 ; Studios = HBO*
 ; MinCommunityRating = 8
+
+; Compound rules separate patterns with |. Any requires one match, All requires every match,
+; and Exclude rejects any match. Different rule lines combine with AND semantics.
+; [Family Water Trips]
+; NameAny = *vacation* | *boat* | *beach*
+; NameAll = *family*
+; ExcludeName = *surf* | *trailer*
+; GenresAny = Documentary | Travel
+; GenresAll = Family
+; ExcludeGenres = Archive | Horror
+; IncludeVideo = true
+; IncludeFolders = false
+; IncludePhotos = false
+; DryRun = false

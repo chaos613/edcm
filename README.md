@@ -131,7 +131,13 @@ Multiple configured rules are combined with AND semantics. EDCM pushes every saf
 |---|---|---|---|
 | `Name = *text*` | Server-side + local verification | `Name = *vacation*` | Uses `SearchTerm=vacation`; simple contains patterns only |
 | Other `Name` wildcard forms | Local fallback | `Name = Vacation 2024*` | Uses a hybrid plan when another server filter is present |
+| `NameAny` | Server-side + local verification | `NameAny = *vacation* \| *boat* \| *beach*` | Matches when at least one pattern matches; unions deduplicated `SearchTerm` queries |
+| `NameAll` | Server-side + local verification | `NameAll = *vacation* \| *beach*` | Every pattern must match in any order; one mandatory term narrows candidates |
+| `ExcludeName` | Local verification | `ExcludeName = *surf* \| *trailer*` | Rejects an item when any pattern matches |
 | `Genres` | Server-side | `Genres = Documentary` | Native genre filter |
+| `GenresAny` | Server-side + local verification | `GenresAny = Documentary \| Family` | At least one genre must match; exact values use native `Genres` narrowing |
+| `GenresAll` | Server-side + local verification | `GenresAll = Documentary \| Family` | Every genre must match; one exact genre narrows candidates |
+| `ExcludeGenres` | Local verification | `ExcludeGenres = Archive \| Horror` | Rejects an item when any genre matches |
 | `Tags` | Server-side | `Tags = Family` | Native tag filter |
 | `ExcludeTags` | Server-side | `ExcludeTags = Archive` | Excludes matching tags |
 | `Years` | Server-side | `Years = 2024` | Multiple years: `Years = 2023,2024` |
@@ -180,6 +186,24 @@ IncludeFolders = false
 IncludePhotos = false
 DryRun = false
 ```
+
+Compound name and genre example:
+
+```ini
+[Family Water Trips]
+NameAny = *vacation* | *boat* | *beach*
+NameAll = *family*
+ExcludeName = *surf* | *trailer*
+GenresAny = Documentary | Travel
+GenresAll = Family
+ExcludeGenres = Archive | Horror
+IncludeVideo = true
+IncludeFolders = false
+IncludePhotos = false
+DryRun = false
+```
+
+`NameAny` and `GenresAny` require at least one listed pattern. `NameAll` and `GenresAll` require every listed pattern. `ExcludeName` and `ExcludeGenres` reject matches containing any listed pattern. Different rule groups combine with AND semantics. The `|` character separates patterns; matching remains case-insensitive and uses EDCM wildcard semantics.
 
 Planner logs disclose counts but never filter values or media details:
 
